@@ -84,3 +84,58 @@ I'm a penguin!
 I'm a mac!
 I'm a PC!
 ```
+
+## Another Hack to the rescue???
+
+Let's say we give up any semblance of sanity and see what we can do if we really put our minds to it.
+Runfiles symlinks are just arbitrary `File`s to be mapped at user controlled paths.
+So if we don't like that Bazel hides the configuration fragment from the runfiles path, we can just.... add it back?
+
+- Normal runfiles
+    ```starlark
+    ctx.runfiles(files = [file])
+    ```
+    Created paths like: `foo.runfiles/_main/file.txt`
+- Blursed runfiles
+    ```starlark
+    ctx.runfiles(
+        symlinks = {
+            file.path: file,
+        },
+    )
+    ```
+    Creates paths like: `foo.runfiles/_main/bazel-out/k8-fastbuild/bin/file.txt`
+
+<center>
+
+![Wow!](https://upload.wikimedia.org/wiktionary/en/1/1a/Galaxy_brain.jpg)
+
+</center>
+
+This approach is shown here:
+
+```
+❯ bazel run //:run_all_conflict_free
+Running @@//:conflict_free_content_command
+We have conflict-free runfiles for multiple platforms!
++ cat bazel-out/k8-fastbuild-ST-576ef9824eaa/bin/boring_output.txt
+This is some boring content for Linux!
++ cat bazel-out/k8-fastbuild-ST-800bba173962/bin/boring_output.txt
+This is some boring content for macOS!
++ cat bazel-out/k8-fastbuild-ST-3d154b188fd7/bin/boring_output.txt
+This is some boring content for Windows!
+Running @@//:conflict_free_greeting_command
+We have conflict-free runfiles for multiple platforms!
++ cat bazel-out/k8-fastbuild-ST-576ef9824eaa/bin/geeting.txt
+I'm a penguin!
++ cat bazel-out/k8-fastbuild-ST-800bba173962/bin/geeting.txt
+I'm a mac!
++ cat bazel-out/k8-fastbuild-ST-3d154b188fd7/bin/geeting.txt
+I'm a PC!
+```
+
+This is kind of brilliant since `File.path` uniquely identifies files in a single bazel build (even with split transitions). Even if two binaries are merged and they happen to have the same keys in the symlinks dict, they are guaranteed to also contain the same values, so merging them is finally safe (as long as nobody happens to map a completely unrelated `File` at this very particular and weird looking symlink name).
+
+Now, this is a dirty hack and I want you to pretend it doesn't exist.
+
+> Please Bazel, consider fixing runfiles.

@@ -2,6 +2,7 @@ load("@rules_multirun//:defs.bzl", "command", "multirun")
 load(":boring_rule.bzl", "boring_rule")
 load(":naive_binary.bzl", "naive_binary")
 load(":smart_binary.bzl", "smart_binary")
+load(":conflict_free_symlinks_binary.bzl", "conflict_free_symlinks_binary")
 
 boring_rule(
     name = "my_boring_file",
@@ -58,5 +59,40 @@ multirun(
     commands = [
         ":content_command",
         ":greeting_command",
+    ],
+)
+
+### Now here is a silly workaround to avoid runfiles merging issues ###
+#
+# Warning: This is pretty hacky and fragile! I would not necessarily recommend this.
+# Please, let's fix runfiles for real instead of working around its limitations like this.
+
+conflict_free_symlinks_binary(
+    name = "conflict_free_content",
+    data = ":my_boring_file",
+    output = "conflict_free_content.sh",
+)
+
+conflict_free_symlinks_binary(
+    name = "conflict_free_greeting",
+    data = ":greeting",
+    output = "conflict_free_greeting.sh",
+)
+
+command(
+    name = "conflict_free_content_command",
+    command = ":conflict_free_content",
+)
+
+command(
+    name = "conflict_free_greeting_command",
+    command = ":conflict_free_greeting",
+)
+
+multirun(
+    name = "run_all_conflict_free",
+    commands = [
+        ":conflict_free_content_command",
+        ":conflict_free_greeting_command",
     ],
 )
