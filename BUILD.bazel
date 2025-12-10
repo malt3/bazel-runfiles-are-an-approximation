@@ -1,0 +1,62 @@
+load("@rules_multirun//:defs.bzl", "command", "multirun")
+load(":boring_rule.bzl", "boring_rule")
+load(":naive_binary.bzl", "naive_binary")
+load(":smart_binary.bzl", "smart_binary")
+
+boring_rule(
+    name = "my_boring_file",
+    content = select({
+        "@platforms//os:linux": "This is some boring content for Linux!\n",
+        "@platforms//os:osx": "This is some boring content for macOS!\n",
+        "@platforms//os:windows": "This is some boring content for Windows!\n",
+    }),
+    output = "boring_output.txt",
+)
+
+naive_binary(
+    name = "bin_with_data",
+    data = ":my_boring_file",
+    output = "bin_with_data.sh",
+)
+
+smart_binary(
+    name = "bin_with_runfiles_symlinks",
+    data = ":my_boring_file",
+    output = "bin_with_runfiles_symlinks.sh",
+)
+
+### Ignore this part until you read "The limits of runfiles symlinks: runfiles merging" in the accompanying article ###
+
+boring_rule(
+    name = "greeting",
+    content = select({
+        "@platforms//os:linux": "I'm a penguin!\n",
+        "@platforms//os:osx": "I'm a mac!\n",
+        "@platforms//os:windows": "I'm a PC!\n",
+    }),
+    output = "geeting.txt",
+)
+
+smart_binary(
+    name = "greeting_binary",
+    data = ":greeting",
+    output = "greeting.sh",
+)
+
+command(
+    name = "content_command",
+    command = ":bin_with_runfiles_symlinks",
+)
+
+command(
+    name = "greeting_command",
+    command = ":greeting_binary",
+)
+
+multirun(
+    name = "run_all",
+    commands = [
+        ":content_command",
+        ":greeting_command",
+    ],
+)
